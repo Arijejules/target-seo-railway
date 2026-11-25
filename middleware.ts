@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GATE_COOKIE = "__tpb_gate";
+const GEO_COOKIE = "__tpb_geo";
 
 const GATED_PATHS = ["/verify"];
 
@@ -71,11 +72,36 @@ function buildHoneypotPage(): string {
 </body></html>`;
 }
 
-export function middleware(request: NextRequest) {
+async function getCountryCode(request: NextRequest): Promise<string | null> {
+  const fromProxy = request.headers.get("cf-ipcountry")
+    || request.headers.get("x-vercel-ip-country")
+    || request.headers.get("x-country-code");
+  if (fromProxy) return fromProxy;
+
+  const cached = request.cookies.get(GEO_COOKIE)?.value;
+  if (cached) return cached;
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("cf-connecting-ip");
+  if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
+
+  try {
+    const res = await fetch(`https://ipapi.co/${ip}/country/`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (res.ok) {
+      const code = (await res.text()).trim();
+      if (/^[A-Z]{2}$/.test(code)) return code;
+    }
+  } catch {}
+
+  return null;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = request.headers.get("user-agent") ?? "";
 
-  // Honeypot: respond with fake 404 to scanners
   if (HONEYPOT_PATHS.some((p) => pathname.toLowerCase().startsWith(p))) {
     return new NextResponse(buildHoneypotPage(), {
       status: 404,
@@ -83,7 +109,6 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Block malicious bots/scanners
   if (isBlocked(ua)) {
     return new NextResponse(buildBlockPage(), {
       status: 403,
@@ -91,67 +116,87 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Allow trusted crawlers, answer engines, and social bots through
   if (TRUSTED_CRAWLERS.test(ua) || AI_ANSWER_ENGINES.test(ua) || SOCIAL_CRAWLERS.test(ua)) {
     return NextResponse.next();
   }
 
-  // Geo restriction (supports Cloudflare, Vercel, or custom proxy headers)
-  const country = request.headers.get("cf-ipcountry")
-    || request.headers.get("x-vercel-ip-country")
-    || request.headers.get("x-country-code");
+  const country = await getCountryCode(request);
   if (country && country !== "US" && country !== "XX" && country !== "T1") {
-    return NextResponse.redirect(new URL("/outside-us", request.url), 307);
+    const res = NextResponse.redirect(new URL("/outside-us", request.url), 307);
+    res.cookies.set(GEO_COOKIE, country, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+    });
+    return res;
   }
-
-  // Gate system for protected paths
-  if (GATED_PATHS.some((p) => pathname.startsWith(p))) {
-    const gateCookie = request.cookies.get(GATE_COOKIE)?.value;
-    const referer = request.headers.get("referer") || "";
-    const gateReferrer = process.env.GATE_REFERRER;
-
-    // Check gate cookie
-    if (gateCookie === "1") {
-      return NextResponse.next();
-    }
-
-    // Check referrer gate
-    if (gateReferrer && referer) {
-      try {
-        const refHost = new URL(referer).hostname.replace(/^www\./, "");
-        const gateHost = gateReferrer.replace(/^www\./, "");
-        if (refHost === gateHost || refHost.endsWith(`.${gateHost}`)) {
-          const res = NextResponse.next();
-          res.cookies.set(GATE_COOKIE, "1", {
-            httpOnly: true,
-            secure: true,
-            sameSite: "lax",
-            maxAge: 86400,
-            path: "/",
-          });
-          return res;
-        }
-      } catch { /* invalid referer */ }
-    }
-
-    // Check search referrer
-    if (SEARCH_REFERRERS.test(referer)) {
-      const res = NextResponse.next();
-      res.cookies.set(GATE_COOKIE, "1", {
+  if (country === "US") {
+    const res = NextResponse.next();
+    if (!request.cookies.get(GEO_COOKIE)?.value) {
+      res.cookies.set(GEO_COOKIE, "US", {
         httpOnly: true,
         secure: true,
         sameSite: "lax",
         maxAge: 86400,
         path: "/",
       });
-      return res;
     }
 
-    // No gate pass — redirect to home
-    return NextResponse.redirect(new URL("/", request.url), 307);
+    if (GATED_PATHS.some((p) => pathname.startsWith(p))) {
+      return handleGate(request, res);
+    }
+    return res;
+  }
+
+  if (GATED_PATHS.some((p) => pathname.startsWith(p))) {
+    return handleGate(request);
   }
 
   return NextResponse.next();
+}
+
+function handleGate(request: NextRequest, existingRes?: NextResponse): NextResponse {
+  const gateCookie = request.cookies.get(GATE_COOKIE)?.value;
+  const referer = request.headers.get("referer") || "";
+  const gateReferrer = process.env.GATE_REFERRER;
+
+  if (gateCookie === "1") {
+    return existingRes || NextResponse.next();
+  }
+
+  if (gateReferrer && referer) {
+    try {
+      const refHost = new URL(referer).hostname.replace(/^www\./, "");
+      const gateHost = gateReferrer.replace(/^www\./, "");
+      if (refHost === gateHost || refHost.endsWith(`.${gateHost}`)) {
+        const res = existingRes || NextResponse.next();
+        res.cookies.set(GATE_COOKIE, "1", {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          maxAge: 86400,
+          path: "/",
+        });
+        return res;
+      }
+    } catch {}
+  }
+
+  if (SEARCH_REFERRERS.test(referer)) {
+    const res = existingRes || NextResponse.next();
+    res.cookies.set(GATE_COOKIE, "1", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+    });
+    return res;
+  }
+
+  return NextResponse.redirect(new URL("/", request.url), 307);
 }
 
 export const config = {

@@ -1,6 +1,6 @@
 const _raw =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  "https://targetpaymentbenefits.com";
+  "https://target-benefits.up.railway.app";
 export const SITE_URL = (
   /^https?:\/\//i.test(_raw) ? _raw : `https://${_raw}`
 ).replace(/\/+$/, "");

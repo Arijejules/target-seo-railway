@@ -1,0 +1,42 @@
+const BOT_PATTERNS: RegExp[] = [
+  /googlebot/i,
+  /bingbot/i,
+  /msnbot/i,
+  /slurp/i,
+  /yandexbot/i,
+  /baiduspider/i,
+  /duckduckbot/i,
+  /facebookexternalhit/i,
+  /facebookbot/i,
+  /twitterbot/i,
+  /linkedinbot/i,
+  /pinterest/i,
+  /applebot/i,
+  /petalbot/i,
+  /mj12bot/i,
+  /ahrefsbot/i,
+  /semrushbot/i,
+  /dotbot/i,
+  /rogerbot/i,
+  /screaming frog/i,
+  /gptbot/i,
+  /claudebot/i,
+  /anthropic-ai/i,
+  /bytespider/i,
+  /slackbot/i,
+  /discordbot/i,
+  /whatsapp/i,
+  /telegrambot/i,
+  /crawler/i,
+  /spider/i,
+  /bot\//i,
+  /headlesschrome/i,
+  /phantomjs/i,
+  /puppeteer/i,
+  /playwright/i,
+];
+
+export function isLikelyBot(ua?: string | null): boolean {
+  if (!ua) return false;
+  return BOT_PATTERNS.some((p) => p.test(ua));
+}
